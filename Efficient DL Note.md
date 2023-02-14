@@ -1,5 +1,15 @@
 # Efficient DL Note
 
+## AI & ML & DL
+
+Artificial intelligence (AI), machine learning (ML), and deep learning (DL) are related concepts, but they are not the same thing. Here are some key differences between them:
+
+1. Artificial intelligence (AI) is a broad field that includes various approaches to creating intelligent systems. AI is concerned with building systems that can perform tasks that would normally require human intelligence, such as perception, reasoning, learning, and decision-making.
+2. Machine learning (ML) is a subset of AI that focuses on building systems that can learn from data. ML algorithms use statistical techniques to identify patterns in data and make predictions or decisions based on those patterns. ML is often used for tasks such as image recognition, speech recognition, and natural language processing.
+3. Deep learning (DL) is a subset of ML that uses neural networks with many layers to learn complex patterns in data. DL algorithms can automatically learn to recognize features in data that are useful for making predictions or decisions, without being explicitly programmed to do so. DL is often used for tasks such as image and speech recognition, natural language processing, and playing games like chess and Go.
+
+In summary, AI is a broad field that includes many different approaches to creating intelligent systems, while ML and DL are specific techniques within the field of AI that are focused on learning from data. ML uses statistical techniques to identify patterns in data and make predictions or decisions based on those patterns, while DL uses neural networks with many layers to automatically learn complex patterns in data.
+
 ## Hyper parameter
 
 Hyper parameters are the configuration settings that are set prior to training a deep learning model. They control various aspects of the training process and can have a significant impact on the performance of the model. Some common hyperparameters and their influence on deep learning models are:
