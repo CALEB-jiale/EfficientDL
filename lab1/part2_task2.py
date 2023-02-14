@@ -6,7 +6,7 @@ import sys
 sys.path.append("pytorch-cifar-master")
 from models import *
 
-PATH = '/Users/lucas/Documents/School/IMT/A2/S4/EfficientDL/02_01/lab1'
+PATH = '/Users/lucas/Documents/School/IMT/A2/S4/EfficientDL/lab1'
 
 # Load data
 models = ["VGG16", "ResNet18", "ResNet50", "ResNet101", "RegNetX_200MF", "RegNetY_400MF", "MobileNetV2",

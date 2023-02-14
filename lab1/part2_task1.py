@@ -1,25 +1,30 @@
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import RepeatedStratifiedKFold
+from utils import progress_bar
+from models import *
 from torchvision.datasets import CIFAR10
-import numpy as np 
+import numpy as np
 import torchvision.transforms as transforms
-import torch 
+import torch
 from torch.utils.data.dataloader import DataLoader
-
 import torch.nn as nn
+import os
 import torch.optim as optim
 import matplotlib.pyplot as plt
-
 import argparse
-
 import warnings
+import sys
+sys.path.append("pytorch-cifar-master")
+
+
 warnings.filterwarnings("ignore")
+PATH = '/Users/lucas/Documents/School/IMT/A2/S4/EfficientDL/lab1'
 
-from vgg import VGG
+#  Normalization adapted for CIFAR10
+normalize_scratch = transforms.Normalize(
+    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 
-
-## Normalization adapted for CIFAR10
-normalize_scratch = transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
-
-# Transforms is a list of transformations applied on the 'raw' dataset before the data is fed to the network. 
+# Transforms is a list of transformations applied on the 'raw' dataset before the data is fed to the network.
 # Here, Data augmentation (RandomCrop and Horizontal Flip) are applied to each batch, differently at each epoch, on the training set data only
 transform_train = transforms.Compose([
     transforms.RandomCrop(32, padding=4),
@@ -33,73 +38,39 @@ transform_test = transforms.Compose([
     normalize_scratch,
 ])
 
-### The data from CIFAR10 will be downloaded in the following folder
-rootdir = '/homes/x21ye/lab1/data/cifar10'
+#  The data from CIFAR10 will be downloaded in the following folder
+rootdir = '/Users/lucas/Documents/School/IMT/A2/S4/EfficientDLDataSet/cifar10'
 
-c10train = CIFAR10(rootdir,train=True,download=True,transform=transform_train)
-c10test = CIFAR10(rootdir,train=False,download=True,transform=transform_test)
+c10train = CIFAR10(rootdir, train=True, download=True,
+                   transform=transform_train)
+c10test = CIFAR10(rootdir, train=False, download=True,
+                  transform=transform_test)
 
-trainloader = DataLoader(c10train,batch_size=32,shuffle=True)
-testloader = DataLoader(c10test,batch_size=32)
+trainloader = DataLoader(c10train, batch_size=32, shuffle=True)
+testloader = DataLoader(c10test, batch_size=32)
 
 
-
-
-## number of target samples for the final dataset
+# number of target samples for the final dataset
 num_train_examples = len(c10train)
 num_samples_subset = 15000
 
-## We set a seed manually so as to reproduce the results easily
-seed  = 2147483647
+# We set a seed manually so as to reproduce the results easily
+seed = 2147483647
 
-## Generate a list of shuffled indices ; with the fixed seed, the permutation will always be the same, for reproducibility
+# Generate a list of shuffled indices ; with the fixed seed, the permutation will always be the same, for reproducibility
 indices = list(range(num_train_examples))
-np.random.RandomState(seed=seed).shuffle(indices)## modifies the list in place
+np.random.RandomState(seed=seed).shuffle(
+    indices)  #  modifies the list in place
 
-## We define the Subset using the generated indices 
-c10train_subset = torch.utils.data.Subset(c10train,indices[:num_samples_subset])
+# We define the Subset using the generated indices
+c10train_subset = torch.utils.data.Subset(
+    c10train, indices[:num_samples_subset])
 print(f"Initial CIFAR10 dataset has {len(c10train)} samples")
 print(f"Subset of CIFAR10 dataset has {len(c10train_subset)} samples")
 
 # Finally we can define anoter dataloader for the training data
-trainloader_subset = DataLoader(c10train_subset,batch_size=32,shuffle=True)
-### You can now use either trainloader (full CIFAR10) or trainloader_subset (subset of CIFAR10) to train your networks.
-
-
-
-
-classes = ('plane', 'car', 'bird', 'cat',
-           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-
-MODELS = ['VGG11', 'VGG13', 'VGG16', 'VGG19']
-
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true',
-                    help='resume from checkpoint')
-args = parser.parse_args()
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-best_acc = 0  # best test accuracy
-start_epoch = 0  # start from epoch 0 or last checkpoint epoch
-
-model = MODELS[2]
-net = VGG(model)
-net = net.to(device)
-
-if args.resume:
-    # Load checkpoint.
-    print('==> Resuming from checkpoint..')
-    assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.pth')
-    net.load_state_dict(checkpoint['net'])
-    best_acc = checkpoint['acc']
-    start_epoch = checkpoint['epoch']
-
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr,
-                      momentum=0.9, weight_decay=5e-4)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=200)
+trainloader_subset = DataLoader(c10train_subset, batch_size=32, shuffle=True)
+# You can now use either trainloader (full CIFAR10) or trainloader_subset (subset of CIFAR10) to train your networks.
 
 
 # Train the network
@@ -127,8 +98,7 @@ def train(epoch):
 
     print('Finished Training')
     train_acc = 100.*correct/total
-    return train_acc, train_loss
-
+    return train_acc, train_loss/(batch_idx+1)
 
 
 def test(epoch):
@@ -153,47 +123,104 @@ def test(epoch):
 
     # Save checkpoint.
     acc = 100.*correct/total
-    if acc > best_acc:
-        print('Saving..')
-        state = {
-            'net': net.state_dict(),
-            'acc': acc,
-            'epoch': epoch,
-        }
-        if not os.path.isdir('checkpoint'):
-            os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckpt.pth')
-        best_acc = acc
-    
-    return acc, test_loss
+    # if acc > best_acc:
+    #     print('Saving..')
+    #     state = {
+    #         'net': net.state_dict(),
+    #         'acc': acc,
+    #         'epoch': epoch,
+    #     }
+    #     if not os.path.isdir('checkpoint'):
+    #         os.mkdir('checkpoint')
+    #     torch.save(state, './checkpoint/ckpt.pth')
+    #     best_acc = acc
+
+    return acc, test_loss/(batch_idx+1)
 
 
-train_loss = []
-train_acc = []
-test_loss = []
-test_acc = []
-for epoch in range(start_epoch, start_epoch+2):
-    train_acc_epoch, train_loss_epoch = train(epoch)
-    test_acc_epoch, test_loss_epoch = test(epoch)
-    scheduler.step()
-    train_loss.append(train_loss_epoch)
-    train_acc.append(train_acc_epoch)
-    test_loss.append(test_loss_epoch)
-    test_acc.append(test_acc_epoch)
+classes = ('plane', 'car', 'bird', 'cat',
+           'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-PATH = '/homes/x21ye/lab1/lab1.1'
+MODELS = ['VGG11', 'VGG13', 'VGG16', 'VGG19']
+LearningRate = [0.01, 0.001]
 
-PATH_net = PATH + '/nets/' + model +'_cifar_net.pth'
-torch.save(net.state_dict(), PATH_net)
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-PATH_train_acc = PATH + '/data_log/' + model + '_cifar_net_train_acc.npy'
-np.save(PATH_train_acc, train_acc)
+for model in MODELS:
+    for learning_rate in LearningRate:
+        best_acc = 0  # best test accuracy
+        start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
-PATH_train_loss = PATH + '/data_log/' + model + '_cifar_net_train_loss.npy'
-np.save(PATH_train_loss, train_loss)
+        net = VGG(model)
+        net = net.to(device)
 
-PATH_test_acc = PATH + '/data_log/' + model + '_cifar_net_test_acc.npy'
-np.save(PATH_test_acc, test_acc)
+        # parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
+        # parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+        # parser.add_argument('--resume', '-r', action='store_true',
+        #                     help='resume from checkpoint')
+        # args = parser.parse_args()
 
-PATH_test_loss = PATH + '/data_log/' + model + '_cifar_net_test_loss.npy'
-np.save(PATH_test_loss, test_loss)
+        # if args.resume:
+        #     # Load checkpoint.
+        #     print('==> Resuming from checkpoint..')
+        #     assert os.path.isdir(
+        #         'checkpoint'), 'Error: no checkpoint directory found!'
+        #     checkpoint = torch.load('./checkpoint/ckpt.pth')
+        #     net.load_state_dict(checkpoint['net'])
+        #     best_acc = checkpoint['acc']
+        #     start_epoch = checkpoint['epoch']
+
+        criterion = nn.CrossEntropyLoss()
+        optimizer = optim.SGD(net.parameters(), lr=learning_rate,
+                              momentum=0.9, weight_decay=5e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=200)
+
+        # # define evaluation
+        # cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
+        # # define search space
+        # space = dict()
+        # space['solver'] = ['newton-cg', 'lbfgs', 'liblinear']
+        # space['penalty'] = ['none', 'l1', 'l2', 'elasticnet']
+        # # define search
+        # search = RandomizedSearchCV(
+        #     net, space, n_iter=100, scoring='accuracy', n_jobs=-1, cv=cv, random_state=1)
+        # # execute search
+
+        train_loss = []
+        train_acc = []
+        test_loss = []
+        test_acc = []
+        for epoch in range(start_epoch, start_epoch+200):
+            train_acc_epoch, train_loss_epoch = train(epoch)
+            test_acc_epoch, test_loss_epoch = test(epoch)
+            scheduler.step()
+            train_loss.append(train_loss_epoch)
+            train_acc.append(train_acc_epoch)
+            test_loss.append(test_loss_epoch)
+            test_acc.append(test_acc_epoch)
+
+        lebel = ''
+        if learning_rate == 0.01:
+            label = '001'
+        else:
+            label = '0001'
+
+        PATH_net = PATH + '/nets/' + model + '_cifar_net_' + label + '.pth'
+        torch.save(net.state_dict(), PATH_net)
+
+        PATH_train_acc = PATH + '/data_log/' + model + \
+            '_cifar_net_train_acc_' + label + '.npy'
+        np.save(PATH_train_acc, train_acc)
+
+        PATH_train_loss = PATH + '/data_log/' + model + \
+            '_cifar_net_train_loss_' + label + '.npy'
+        np.save(PATH_train_loss, train_loss)
+
+        PATH_test_acc = PATH + '/data_log/' + model + \
+            '_cifar_net_test_acc_' + label + '.npy'
+        np.save(PATH_test_acc, test_acc)
+
+        PATH_test_loss = PATH + '/data_log/' + model + \
+            '_cifar_net_test_loss_' + label + '.npy'
+        np.save(PATH_test_loss, test_loss)
