@@ -9,8 +9,8 @@ import os
 import torch.optim as optim
 import warnings
 import argparse
-import sys
 from mix_up import *
+import sys
 sys.path.append("pytorch-cifar-master")
 from models import *
 from utils import progress_bar
@@ -21,7 +21,7 @@ PATH = '/homes/x21ye/Documents/Efficient DL'
 
 #  The data from CIFAR10 will be downloaded in the following folder
 data_dir = PATH + '/lab1/data_set/cifar10'
-data_checkpoint = PATH + '/lab4//checkpoint/ckpt.pth'
+PATH_checkpoint = PATH + '/lab4//checkpoint/ckpt.pth'
 
 
 def load_data(data_dir):
@@ -89,7 +89,6 @@ def train(epoch):
         
         if correct/total > 0.5 and not mix:
             print("Start mix up")
-            print()
             mix = True
 
     print('Finished Training')
@@ -128,7 +127,7 @@ def test(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, data_checkpoint)
+        torch.save(state, PATH_checkpoint)
         best_acc = acc
 
     return acc, test_loss/(batch_idx+1), tot_time
@@ -141,30 +140,21 @@ trainloader, testloader = load_data(data_dir)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true',
-                    help='resume from checkpoint')
-args = parser.parse_args()
-
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 net = DenseNet121()
-net = net.to(device)
 
-if device == 'cuda':
-    net = torch.nn.DataParallel(net)
-    cudnn.benchmark = True
-
-if args.resume:
+if False:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    checkpoint = torch.load('./checkpoint/ckpt.pth')
+    checkpoint = torch.load(PATH_checkpoint)
     net.load_state_dict(checkpoint['net'])
     best_acc = checkpoint['acc']
     start_epoch = checkpoint['epoch']
+
+net = net.to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9, weight_decay=5e-4)
@@ -187,7 +177,7 @@ PATH_test_loss = PATH_data + 'test_loss.npy'
 PATH_test_time = PATH_data + 'test_time.npy'
 
 
-for epoch in range(0, 1):
+for epoch in range(start_epoch, 1):
     train_acc_epoch, train_loss_epoch, train_time_epoch = train(epoch)
     test_acc_epoch, test_loss_epoch, test_time_epoch = test(epoch)
     scheduler.step()
