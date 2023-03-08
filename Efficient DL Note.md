@@ -1,5 +1,40 @@
 # Efficient DL Note
 
+## Commands
+
+### 处理连接问题
+
+```
+ssh pc-elec-386
+rm -rf .vscode-server/
+```
+
+### 查看内存状态
+
+```
+nvidia-smi
+```
+
+### 进入校内环境
+
+```
+source /opt/campux/virtualenv/deeplearning-u20/bin/activate
+```
+
+### Tmux
+
+```bash
+tmux new-session -s session_name
+tmux attach-session -t session_name
+tmux attach
+tmux detach
+```
+
+```bash
+kinit
+krenew -K 60 python3 file_name.py
+```
+
 ## AI & ML & DL
 
 Artificial intelligence (AI), machine learning (ML), and deep learning (DL) are related concepts, but they are not the same thing. Here are some key differences between them:
